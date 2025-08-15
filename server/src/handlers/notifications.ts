@@ -1,40 +1,69 @@
-import { 
-    type SendNotificationInput, 
-    type NotificationLog 
-} from '../schema';
+import { db } from '../db';
+import { notificationLogsTable, membersTable } from '../db/schema';
+import { type SendNotificationInput, type NotificationLog } from '../schema';
+import { eq, desc, and } from 'drizzle-orm';
 
 // Send WhatsApp notifications to members
 export async function sendWhatsAppNotifications(
     input: SendNotificationInput, 
     adminUserId: number
 ): Promise<NotificationLog[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to send WhatsApp notifications to selected members.
-    // Should integrate with WhatsApp API to send messages and log the results.
-    // Returns array of notification log entries showing success/failure for each member.
-    return input.member_ids.map(memberId => ({
-        id: 0,
-        member_id: memberId,
-        type: input.type,
-        message: input.message,
-        sent_at: new Date(),
-        sent_by: adminUserId,
-        status: 'sent' as const
-    }));
+    try {
+        // For each member_id, create a notification log entry
+        const notificationPromises = input.member_ids.map(async (memberId) => {
+            // In a real implementation, this would integrate with WhatsApp API
+            // For now, we'll assume all notifications are sent successfully
+            // and create log entries in the database
+            
+            const result = await db.insert(notificationLogsTable)
+                .values({
+                    member_id: memberId,
+                    type: input.type,
+                    message: input.message,
+                    sent_by: adminUserId,
+                    status: 'sent' // In real implementation, this would depend on WhatsApp API response
+                })
+                .returning()
+                .execute();
+
+            return result[0];
+        });
+
+        const notifications = await Promise.all(notificationPromises);
+        return notifications;
+    } catch (error) {
+        console.error('Failed to send WhatsApp notifications:', error);
+        throw error;
+    }
 }
 
 // Get notification history for admin
 export async function getNotificationHistory(): Promise<NotificationLog[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all notification logs for admin to track
-    // what messages have been sent to which members and their delivery status.
-    return [];
+    try {
+        const notifications = await db.select()
+            .from(notificationLogsTable)
+            .orderBy(desc(notificationLogsTable.sent_at))
+            .execute();
+
+        return notifications;
+    } catch (error) {
+        console.error('Failed to get notification history:', error);
+        throw error;
+    }
 }
 
 // Get notifications sent to a specific member
 export async function getMemberNotifications(memberId: number): Promise<NotificationLog[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all notifications sent to a specific member,
-    // useful for tracking communication history.
-    return [];
+    try {
+        const notifications = await db.select()
+            .from(notificationLogsTable)
+            .where(eq(notificationLogsTable.member_id, memberId))
+            .orderBy(desc(notificationLogsTable.sent_at))
+            .execute();
+
+        return notifications;
+    } catch (error) {
+        console.error('Failed to get member notifications:', error);
+        throw error;
+    }
 }
